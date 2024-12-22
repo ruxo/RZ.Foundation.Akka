@@ -57,4 +57,9 @@ public static class ActorExtension
     public static void TellUnit(this ICanTell target, IActorRef? sender = null) {
         target.Tell(unit, sender ?? ActorRefs.NoSender);
     }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void AsyncCall<T>(this UntypedActor _, T state, Func<T, Task> task) {
+        ActorTaskScheduler.RunTask(() => task(state));
+    }
 }

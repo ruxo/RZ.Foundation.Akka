@@ -1,2 +1,8 @@
 = RZ Akka library
 
+To install Akka in ASP.Net project, use:
+
+[source,csharp]
+----
+builder.Services.AddAkkaSystem("SYSTEM NAME");
+----
