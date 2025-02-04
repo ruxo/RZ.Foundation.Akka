@@ -5,7 +5,7 @@ using Akka.DependencyInjection;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Tirax.QR4People.Services;
+namespace RZ.Foundation.Akka;
 
 [PublicAPI]
 public static class AkkInstaller
