@@ -12,11 +12,14 @@ namespace RZ.Foundation.Akka;
 public static class ActorExtension
 {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    static Props DependencyProps<T>(this ActorSystem sys, params object[] parameters) where T : ActorBase =>
+    public static Props DependencyProps<T>(this ActorSystem sys, params object[] parameters) where T : ActorBase =>
         DependencyResolver.For(sys).Props<T>(parameters);
 
     public static Task CoordinatedShutdown(this ActorSystem system, CS.Reason? reason = null)
         => CS.Get(system).Run(reason ?? CS.ClrExitReason.Instance);
+
+    public static IActorRef CreateWithProps<T>(this ActorSystem sys, string name, Func<Props,Props> setter, params object[] parameters) where T : ActorBase =>
+        sys.ActorOf(setter(sys.DependencyProps<T>(parameters)), name);
 
     public static IActorRef CreateActor<T>(this ActorSystem sys, string name, params object[] parameters) where T : ActorBase =>
         sys.ActorOf(sys.DependencyProps<T>(parameters), name);

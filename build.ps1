@@ -8,7 +8,7 @@ function build {
     dotnet pack -c Release
     $file = Get-Item ./bin/Release/*.nupkg
     Write-Output "Build $($file.Name)"
-    Move-Item ./bin/Release/*.nupkg $destination
+    Move-Item -Force ./bin/Release/*.nupkg $destination
     Pop-Location
 }
 

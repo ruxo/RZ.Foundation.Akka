@@ -1,0 +1,10 @@
+﻿<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".gitignore" />
+    <File Path="README.adoc" />
+    <File Path="build.ps1" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src\Akka\RZ.Foundation.Akka.csproj" Type="Classic C#" />
+  </Folder>
+</Solution>
