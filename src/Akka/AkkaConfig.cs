@@ -9,6 +9,11 @@ public class AkkaConfig
     public const string Simple = "akka.actor.ask-timeout = {0}s";
 
     /// <summary>
+    /// Akka's system name
+    /// </summary>
+    public string? System { get; set; }
+
+    /// <summary>
     /// Maximum wait time in seconds for receiving a response when using the Ask pattern.
     /// If not set, defaults to 10 seconds.
     /// This setting configures akka.actor.ask-timeout in the HOCON configuration.
@@ -26,7 +31,7 @@ public class AkkaConfig
     /// <p>Gets or sets the Akka cluster seed nodes that this actor system should connect to.</p>
     /// <p>Seed nodes are the first nodes contacted when joining the cluster. They act as initial
     /// contact points for cluster formation. At least one seed node must be specified.</p>
-    /// <p>Each node requires the format: <c>"akka.tcp://system@hostname:port"</c></p>
+    /// <p>Each node requires the format: <c>"hostname:port"</c></p>
     /// <p>If this property is set, the system will use Akka's clustering functionality.</p>
     /// </summary>
     public string[]? Nodes { get; set; }
