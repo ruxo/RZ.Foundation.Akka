@@ -10,15 +10,16 @@ namespace RZ.Foundation.Akka;
 [PublicAPI]
 public static class AkkInstaller
 {
-    const string ConfigHocon = "akka.actor.ask-timeout = {0}s";
-
     public static IServiceCollection AddAkkaSystem(this IServiceCollection services, string systemName, int defaultAskTimeout = 10) {
-        if (string.IsNullOrWhiteSpace(systemName)) throw new ArgumentException(nameof(systemName));
         if (defaultAskTimeout < 1) throw new ArgumentOutOfRangeException(nameof(defaultAskTimeout));
+        return AddAkkaSystem(services, systemName, string.Format(AkkaConfig.Simple, defaultAskTimeout));
+    }
+
+    public static IServiceCollection AddAkkaSystem(this IServiceCollection services, string systemName, string hocon) {
+        if (string.IsNullOrWhiteSpace(systemName)) throw new ArgumentException(nameof(systemName));
 
         services.AddSingleton(sp => {
-            var finalConfig = string.Format(ConfigHocon, defaultAskTimeout);
-            var config = BootstrapSetup.Create().WithConfig(ConfigurationFactory.ParseString(finalConfig));
+            var config = BootstrapSetup.Create().WithConfig(ConfigurationFactory.ParseString(hocon));
             var diSetup = DependencyResolverSetup.Create(sp);
             var setup = ActorSystemSetup.Create(config, diSetup);
             return ActorSystem.Create(systemName, setup);
