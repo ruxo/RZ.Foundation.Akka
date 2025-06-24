@@ -39,7 +39,7 @@ public class AkkaConfig
     public static string CreateClusterConfig(string[] seedNodes, string hostName, int port = 0, int defaultAskTimeout = 10) {
         if (seedNodes.Length == 0) throw new ArgumentException("At least one seed node is required");
         ArgumentOutOfRangeException.ThrowIfLessThan(defaultAskTimeout, 1);
-        if (port is < 1 or > 65535) throw new ArgumentOutOfRangeException(nameof(port));
+        if (port is < 0 or > 65535) throw new ArgumentOutOfRangeException(nameof(port));
         if (string.IsNullOrWhiteSpace(hostName)) throw new ArgumentException(nameof(hostName));
 
         return $@"
