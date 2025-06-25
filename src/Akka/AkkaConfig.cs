@@ -1,4 +1,9 @@
-﻿using JetBrains.Annotations;
+﻿using System.Configuration;
+using Akka.Actor;
+using Akka.Actor.Setup;
+using Akka.Configuration;
+using JetBrains.Annotations;
+using LanguageExt;
 using RZ.Foundation.Extensions;
 
 namespace RZ.Foundation.Akka;
@@ -35,6 +40,32 @@ public class AkkaConfig
     /// <p>If this property is set, the system will use Akka's clustering functionality.</p>
     /// </summary>
     public string[]? Nodes { get; set; }
+
+    public string ToHocon(string system) {
+        if (Nodes is { } nodes){
+            var akkaNodes = nodes.Map(n => ParseHostPort(n).IsSome
+                                               ? $"akka.tcp://{system}@{n}"
+                                               : throw new ConfigurationErrorsException("Akka configuration contains invalid node format")).ToArray();
+            var (host, port) = (from self in Optional(Self)
+                                from parsed in ParseHostPort(self)
+                                select parsed
+                               ).ToNullable() ?? throw new ConfigurationErrorsException("Akka configuration is required for Akka cluster");
+            return CreateClusterConfig(akkaNodes, host, port, AskTimeout ?? AkkaInstaller.DefaultAskTimeout);
+        }
+        else
+            return string.Format(Simple, AskTimeout ?? AkkaInstaller.DefaultAskTimeout);
+    }
+
+    public static Option<(string Host, int Port)> ParseHostPort(string hostPort)
+        => hostPort.Split(':', StringSplitOptions.RemoveEmptyEntries) switch {
+            [var host]           => (host.Trim(), 0),
+            [var host, var port] => (host.Trim(), int.Parse(port)),
+
+            _ => None
+        };
+
+    public static Setup Bootstrap(string hocon)
+        => BootstrapSetup.Create().WithConfig(ConfigurationFactory.ParseString(hocon));
 
     public static string CreateClusterConfig(string[] seedNodes, string hostName, int port = 0, int defaultAskTimeout = 10) {
         if (seedNodes.Length == 0) throw new ArgumentException("At least one seed node is required");
