@@ -41,6 +41,9 @@ public class AkkaConfig
     /// </summary>
     public string[]? Nodes { get; set; }
 
+    public string GetSystem()
+        => System ?? new string(global::System.Reflection.Assembly.GetExecutingAssembly().GetName().Name!.Where(char.IsLetterOrDigit).ToArray());
+
     public string ToHocon(string system) {
         if (Nodes is { } nodes){
             var akkaNodes = nodes.Map(n => ParseHostPort(n).IsSome

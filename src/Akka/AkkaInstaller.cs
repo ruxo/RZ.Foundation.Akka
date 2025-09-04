@@ -1,4 +1,5 @@
-﻿using Akka.Actor;
+﻿using System.Runtime.CompilerServices;
+using Akka.Actor;
 using Akka.Actor.Setup;
 using Akka.DependencyInjection;
 using JetBrains.Annotations;
@@ -30,11 +31,16 @@ public static class AkkaInstaller
         return services;
     }
 
-    public static IServiceCollection AddAkkaSystem(this IServiceCollection builder, AkkaConfig config){
-        var system = config.System ?? new string(System.Reflection.Assembly.GetExecutingAssembly().GetName().Name!.Where(char.IsLetterOrDigit).ToArray());
-
-        builder.AddAkkaSystem(system, config.ToHocon(system));
-
-        return builder;
+    public static IServiceCollection AddAkkaSystem(this IServiceCollection builder, AkkaConfig config) {
+        var system = config.GetSystem();
+        return builder.AddAkkaSystem(system, config.ToHocon(system));
     }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static IActorRef Spawn(this Props props, ActorSystem system, string name)
+        => system.ActorOf(props, name);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static IActorRef Spawn(this Props props, IUntypedActorContext context, string name)
+        => context.ActorOf(props, name);
 }
