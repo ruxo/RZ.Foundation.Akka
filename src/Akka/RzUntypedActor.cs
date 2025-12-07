@@ -29,6 +29,6 @@ public abstract class RzUntypedActor<T>(IServiceProvider sp) : UntypedActor wher
     }
 
     void OnFinalization(object message) {
-        Logger.LogDebug("Draining message: {@Message}", message);
+        Logger.LogDebug("Finalizing [{Path}]: Draining message: {@Message}", Self.Path.Name, message);
     }
 }
