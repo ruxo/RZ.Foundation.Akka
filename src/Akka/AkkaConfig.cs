@@ -5,6 +5,7 @@ using Akka.Configuration;
 using JetBrains.Annotations;
 using LanguageExt;
 using RZ.Foundation.Extensions;
+using RZ.Foundation.Types;
 
 namespace RZ.Foundation.Akka;
 
@@ -44,19 +45,25 @@ public class AkkaConfig
     public string GetSystem()
         => System ?? new string(global::System.Reflection.Assembly.GetExecutingAssembly().GetName().Name!.Where(char.IsLetterOrDigit).ToArray());
 
-    public string ToHocon(string system) {
+    public Outcome<string> ToHocon(string system) {
         if (Nodes is { } nodes){
-            var akkaNodes = nodes.Map(n => ParseHostPort(n).IsSome
-                                               ? $"akka.tcp://{system}@{n}"
-                                               : throw new ConfigurationErrorsException("Akka configuration contains invalid node format")).ToArray();
-            var (host, port) = (from self in Optional(Self)
-                                from parsed in ParseHostPort(self)
-                                select parsed
-                               ).ToNullable() ?? throw new ConfigurationErrorsException("Akka configuration is required for Akka cluster");
+            var result = nodes.Map(n => ParseHostPort(n).IsSome
+                                            ? SuccessOutcome($"akka.tcp://{system}@{n}")
+                                            : new ErrorInfo(StandardErrorCodes.ValidationFailed, "Akka configuration contains invalid node format"))
+                              .MakeList();
+            if (Fail(result, out var e, out var akkaNodes)) return e;
+
+            var hostPost = (from self in Optional(Self)
+                            from parsed in ParseHostPort(self)
+                            select parsed
+                           ).ToNullable();
+            if (hostPost is null)
+                return new ErrorInfo(StandardErrorCodes.ValidationFailed, "Akka configuration is required for Akka cluster");
+
+            var (host, port) = hostPost.Value;
             return CreateClusterConfig(akkaNodes, host, port, AskTimeout ?? AkkaInstaller.DefaultAskTimeout);
         }
-        else
-            return string.Format(Simple, AskTimeout ?? AkkaInstaller.DefaultAskTimeout);
+        return string.Format(Simple, AskTimeout ?? AkkaInstaller.DefaultAskTimeout);
     }
 
     public static Option<(string Host, int Port)> ParseHostPort(string hostPort)
@@ -70,11 +77,12 @@ public class AkkaConfig
     public static Setup Bootstrap(string hocon)
         => BootstrapSetup.Create().WithConfig(ConfigurationFactory.ParseString(hocon));
 
-    public static string CreateClusterConfig(string[] seedNodes, string hostName, int port = 0, int defaultAskTimeout = 10) {
-        if (seedNodes.Length == 0) throw new ArgumentException("At least one seed node is required");
-        ArgumentOutOfRangeException.ThrowIfLessThan(defaultAskTimeout, 1);
-        if (port is < 0 or > 65535) throw new ArgumentOutOfRangeException(nameof(port));
-        if (string.IsNullOrWhiteSpace(hostName)) throw new ArgumentException(nameof(hostName));
+    public static Outcome<string> CreateClusterConfig(IReadOnlyList<string> seedNodes, string hostName, int port = 0, int defaultAskTimeout = 10) {
+        if (seedNodes.Count == 0) return new ErrorInfo(StandardErrorCodes.ValidationFailed, "At least one seed node is required");
+        if (defaultAskTimeout < 1) return new ErrorInfo(StandardErrorCodes.ValidationFailed, "Default ask timeout must be greater than 0");
+
+        if (port is < 0 or > 65535) return new ErrorInfo(StandardErrorCodes.ValidationFailed, $"Port value is invalid {port}");
+        if (string.IsNullOrWhiteSpace(hostName)) return new ErrorInfo(StandardErrorCodes.ValidationFailed, "Host name cannot be empty");
 
         return $@"
 akka.actor.ask-timeout = {defaultAskTimeout}s

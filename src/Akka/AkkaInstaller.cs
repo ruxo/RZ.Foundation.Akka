@@ -12,35 +12,45 @@ public static class AkkaInstaller
 {
     public const int DefaultAskTimeout = 10;
 
-    public static IServiceCollection AddAkkaSystem(this IServiceCollection services, string systemName, int defaultAskTimeout = DefaultAskTimeout) {
-        if (defaultAskTimeout < 1) throw new ArgumentOutOfRangeException(nameof(defaultAskTimeout));
-        return AddAkkaSystem(services, systemName, string.Format(AkkaConfig.Simple, defaultAskTimeout));
+    extension(IServiceCollection services)
+    {
+        [PublicAPI]
+        public IServiceCollection AddAkkaSystem(string systemName, int defaultAskTimeout = DefaultAskTimeout) {
+            if (defaultAskTimeout < 1) throw new ArgumentOutOfRangeException(nameof(defaultAskTimeout));
+            return AddAkkaSystem(services, systemName, string.Format(AkkaConfig.Simple, defaultAskTimeout));
+        }
+
+        [PublicAPI]
+        public IServiceCollection AddAkkaSystem(string systemName, string hocon)
+            => services.AddAkkaSystem(systemName, AkkaConfig.Bootstrap(hocon));
+
+        [PublicAPI]
+        public IServiceCollection AddAkkaSystem(string systemName, params Setup[] configs) {
+            if (string.IsNullOrWhiteSpace(systemName)) throw new ArgumentException(nameof(systemName));
+
+            services.AddSingleton(sp => {
+                var diSetup = DependencyResolverSetup.Create(sp);
+                var setup = ActorSystemSetup.Create(configs.Append(diSetup).ToArray());
+                return ActorSystem.Create(systemName, setup);
+            });
+            return services;
+        }
+
+        [PublicAPI]
+        public IServiceCollection AddAkkaSystem(AkkaConfig config) {
+            var system = config.GetSystem();
+            return services.AddAkkaSystem(system, config.ToHocon(system).Unwrap());
+        }
     }
 
-    public static IServiceCollection AddAkkaSystem(this IServiceCollection services, string systemName, string hocon) =>
-        services.AddAkkaSystem(systemName, AkkaConfig.Bootstrap(hocon));
+    extension(Props props)
+    {
+        [PublicAPI, MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public IActorRef Spawn(ActorSystem system, string name)
+            => system.ActorOf(props, name);
 
-    public static IServiceCollection AddAkkaSystem(this IServiceCollection services, string systemName, params Setup[] configs) {
-        if (string.IsNullOrWhiteSpace(systemName)) throw new ArgumentException(nameof(systemName));
-
-        services.AddSingleton(sp => {
-            var diSetup = DependencyResolverSetup.Create(sp);
-            var setup = ActorSystemSetup.Create(configs.Append(diSetup).ToArray());
-            return ActorSystem.Create(systemName, setup);
-        });
-        return services;
+        [PublicAPI, MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public IActorRef Spawn(IUntypedActorContext context, string name)
+            => context.ActorOf(props, name);
     }
-
-    public static IServiceCollection AddAkkaSystem(this IServiceCollection builder, AkkaConfig config) {
-        var system = config.GetSystem();
-        return builder.AddAkkaSystem(system, config.ToHocon(system));
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static IActorRef Spawn(this Props props, ActorSystem system, string name)
-        => system.ActorOf(props, name);
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static IActorRef Spawn(this Props props, IUntypedActorContext context, string name)
-        => context.ActorOf(props, name);
 }
