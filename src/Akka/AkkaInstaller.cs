@@ -22,10 +22,10 @@ public static class AkkaInstaller
 
         [PublicAPI]
         public IServiceCollection AddAkkaSystem(string systemName, string hocon)
-            => services.AddAkkaSystem(systemName, AkkaConfig.Bootstrap(hocon));
+            => services.AddAkkaSystem(systemName, [AkkaConfig.Bootstrap(hocon)]);
 
         [PublicAPI]
-        public IServiceCollection AddAkkaSystem(string systemName, params Setup[] configs) {
+        public IServiceCollection AddAkkaSystem(string systemName, Setup[] configs) {
             if (string.IsNullOrWhiteSpace(systemName)) throw new ArgumentException(nameof(systemName));
 
             services.AddSingleton(sp => {
