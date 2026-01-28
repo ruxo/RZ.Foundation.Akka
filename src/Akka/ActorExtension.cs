@@ -3,6 +3,8 @@ using Akka.Actor;
 using Akka.DependencyInjection;
 using Akka.Dispatch;
 using JetBrains.Annotations;
+using LanguageExt.UnitsOfMeasure;
+using RZ.Foundation.Types;
 using CS = Akka.Actor.CoordinatedShutdown;
 // ReSharper disable CheckNamespace
 
@@ -71,6 +73,26 @@ public static class ActorExtension
         [PublicAPI]
         public void TellUnit(IActorRef? sender = null)
             => target.Tell(unit, sender ?? ActorRefs.NoSender);
+
+        [PublicAPI]
+        public async ValueTask<Outcome<object>> TryAsk(object message, TimeSpan? timeout = null) {
+            try{
+                return await target.Ask(message, timeout ?? AkkaInstaller.DefaultAskTimeout.Seconds());
+            }
+            catch (Exception e){
+                return ErrorFrom.Exception(e);
+            }
+        }
+
+        [PublicAPI]
+        public async ValueTask<Outcome<T>> TryAsk<T>(object message, TimeSpan? timeout = null) {
+            try{
+                return await target.Ask<T>(message, timeout ?? AkkaInstaller.DefaultAskTimeout.Seconds());
+            }
+            catch (Exception e){
+                return ErrorFrom.Exception(e);
+            }
+        }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

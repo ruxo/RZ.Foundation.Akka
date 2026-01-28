@@ -15,7 +15,7 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="RZ.Foundation" Version="8.2.5" />
+    <PackageReference Include="RZ.Foundation" Version="8.2.6-beta.3" />
   </ItemGroup>
 
 </Project>
