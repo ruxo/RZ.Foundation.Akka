@@ -39,11 +39,29 @@ public static class ActorExtension
     extension(ICanTell target)
     {
         [PublicAPI]
+        public void SafeRespond<T>(ValueTask<Outcome<T>> message, Func<ErrorInfo, ErrorInfo>? errorMapper = null, IActorRef? sender = null) {
+            ActorTaskScheduler.RunTask(async () => {
+                if (Fail(await message.ConfigureAwait(false), out var error, out var result))
+                    target.RespondError<T>(errorMapper?.Invoke(error) ?? error, sender);
+                else
+                    target.RespondSuccess(result, sender);
+            });
+        }
+
+        [PublicAPI]
+        public void RespondSuccess<T>(in T data, IActorRef? sender = null)
+            => target.Tell(SuccessOutcome(data), sender ?? ActorRefs.NoSender);
+
+        [PublicAPI]
+        public void RespondError<T>(ErrorInfo error, IActorRef? sender = null)
+            => target.Tell(FailedOutcome<T>(error), sender ?? ActorRefs.NoSender);
+
+        [PublicAPI, Obsolete("Use SafeRespond instead")]
         public void Respond(ValueTask message,
                             Func<Exception, Exception>? errorMapper = null,
                             IActorRef? sender = null) {
             ActorTaskScheduler.RunTask(async () => {
-                var (error, _) = await Try(message);
+                var (error, _) = await Try(message).ConfigureAwait(false);
                 var finalSender = sender ?? ActorRefs.NoSender;
                 if (error is null)
                     target.Tell(unit, finalSender);
@@ -54,12 +72,12 @@ public static class ActorExtension
             });
         }
 
-        [PublicAPI]
+        [PublicAPI, Obsolete("Use SafeRespond instead")]
         public void Respond<T>(ValueTask<T> message,
                                Func<Exception, Exception>? errorMapper = null,
                                IActorRef? sender = null) where T : notnull {
             ActorTaskScheduler.RunTask(async () => {
-                var (error, result) = await Try(message);
+                var (error, result) = await Try(message).ConfigureAwait(false);
                 var finalSender = sender ?? ActorRefs.NoSender;
                 if (error is null)
                     target.Tell(result, finalSender);
@@ -77,7 +95,7 @@ public static class ActorExtension
         [PublicAPI]
         public async ValueTask<Outcome<object>> TryAsk(object message, TimeSpan? timeout = null) {
             try{
-                return await target.Ask(message, timeout ?? AkkaInstaller.DefaultAskTimeout.Seconds());
+                return await target.Ask(message, timeout ?? AkkaInstaller.DefaultAskTimeout.Seconds()).ConfigureAwait(false);
             }
             catch (Exception e){
                 return ErrorFrom.Exception(e);
@@ -87,7 +105,7 @@ public static class ActorExtension
         [PublicAPI]
         public async ValueTask<Outcome<T>> TryAsk<T>(object message, TimeSpan? timeout = null) {
             try{
-                return await target.Ask<T>(message, timeout ?? AkkaInstaller.DefaultAskTimeout.Seconds());
+                return await target.Ask<T>(message, timeout ?? AkkaInstaller.DefaultAskTimeout.Seconds()).ConfigureAwait(false);
             }
             catch (Exception e){
                 return ErrorFrom.Exception(e);
@@ -97,5 +115,5 @@ public static class ActorExtension
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void AsyncCall<T>(this UntypedActor _, T state, Func<T, ValueTask> task)
-        => ActorTaskScheduler.RunTask(async () => await task(state));
+        => ActorTaskScheduler.RunTask(async () => await task(state).ConfigureAwait(false));
 }

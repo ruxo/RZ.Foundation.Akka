@@ -17,7 +17,7 @@ public static class AkkaInstaller
         [PublicAPI]
         public IServiceCollection AddAkkaSystem(string systemName, int defaultAskTimeout = DefaultAskTimeout) {
             if (defaultAskTimeout < 1) throw new ArgumentOutOfRangeException(nameof(defaultAskTimeout));
-            return AddAkkaSystem(services, systemName, string.Format(AkkaConfig.Simple, defaultAskTimeout));
+            return services.AddAkkaSystem(systemName, string.Format(AkkaConfig.Simple, defaultAskTimeout));
         }
 
         [PublicAPI]

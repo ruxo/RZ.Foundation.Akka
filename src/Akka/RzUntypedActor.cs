@@ -28,7 +28,16 @@ public abstract class RzUntypedActor<T>(IServiceProvider sp) : UntypedActor wher
         Logger.LogWarning("{Processor}:[{Path}] cannot handle message from sender:[{Sender}]: {@Message}", caller, Self.Path.Name, Sender.Path.Name, message);
     }
 
-    void OnFinalization(object message) {
+    protected void Run<A>(A message, Func<A, ValueTask> task)
+        => RunTask(async () => await task(message).ConfigureAwait(false));
+
+    protected void Run<A>(A message, Func<A, ValueTask<Outcome<Unit>>> task)
+        => RunTask(async () => {
+            if (Fail(await task(message).ConfigureAwait(false), out var e))
+                Logger.LogError("Error from processing message {MessageType}: {@Error}", typeof(A).Name, new { Message = message, Error = e });
+        });
+
+    protected virtual void OnFinalization(object message) {
         Logger.LogDebug("Finalizing [{Path}]: Draining message: {@Message}", Self.Path.Name, message);
     }
 }
