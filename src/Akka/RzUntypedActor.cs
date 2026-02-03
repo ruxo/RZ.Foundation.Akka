@@ -11,6 +11,8 @@ public abstract class RzUntypedActor<T>(IServiceProvider sp) : UntypedActor wher
 {
     protected readonly ILogger Logger = sp.GetRequiredService<ILogger<T>>();
 
+    protected IServiceProvider Services => sp;
+
     /// <summary>
     /// Drain all messages and stop the actor.
     /// </summary>
