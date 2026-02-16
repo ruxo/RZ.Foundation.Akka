@@ -1,8 +1,136 @@
 = RZ Akka library
 
+== Overview
+
+RZ.Foundation.Akka is a library that simplifies integration of Akka.NET actor systems into ASP.NET applications, providing dependency injection support, base actor classes, and utility methods for actor communication.
+
+== Installation
+
 To install Akka in ASP.Net project, use:
 
 [source,csharp]
 ----
 builder.Services.AddAkkaSystem("SYSTEM NAME");
 ----
+
+This registers the Akka actor system with the specified name into the DI container.
+
+== Base Actor Classes
+
+The library provides base actor classes that integrate with ASP.NET's dependency injection:
+
+=== RzUntypedActor
+
+Base actor class that provides dependency injection support and utility methods to simplify actor development.
+
+[source,csharp]
+----
+public class MyActor : RzUntypedActor<MyActor>
+{
+    public MyActor(IServiceProvider sp) : base(sp)
+    {
+        // Services is available here
+        var myService = Services.GetService<IMyService>();
+    }
+}
+----
+
+==== FloodAndStop
+
+Use this to gracefully shutdown your actor while ensuring all queued messages are processed before stopping.
+
+[source,csharp]
+----
+FloodAndStop();
+----
+
+==== LogUnhandled
+
+Use this to debug message handling issues by automatically logging detailed context about unhandled messages, including where they came from and which method received them.
+
+[source,csharp]
+----
+LogUnhandled(message);
+----
+
+==== Run (ValueTask overload)
+
+Use this to safely execute async operations within your actor without blocking or causing threading issues.
+
+[source,csharp]
+----
+Run(message, async msg => {
+    await SomeAsyncOperation(msg);
+});
+----
+
+==== Run (Outcome overload)
+
+Use this when you need automatic error logging for failed operations - errors are logged with full context about the message and failure.
+
+[source,csharp]
+----
+Run(message, async msg => {
+    return await ProcessWithOutcome(msg);
+});
+----
+
+==== OnFinalization
+
+Override this to customize how your actor handles messages during shutdown, useful for cleanup or special termination logic.
+
+[source,csharp]
+----
+protected override void OnFinalization(object message)
+{
+    // Custom shutdown handling
+    base.OnFinalization(message);
+}
+----
+
+The library provides safe response methods for actor communication:
+
+=== SafeRespond
+
+Safely responds to sender without throwing exceptions:
+
+[source,csharp]
+----
+SafeRespond(message);
+----
+
+=== RespondSuccess
+
+Responds with a success result:
+
+[source,csharp]
+----
+RespondSuccess(data);
+----
+
+=== RespondError
+
+Responds with an error result:
+
+[source,csharp]
+----
+RespondError(errorMessage);
+----
+
+== Run Helpers
+
+Utility methods for executing asynchronous operations within actors with proper await configuration.
+
+[source,csharp]
+----
+await Run(async () => {
+    // Async operation with configured awaits
+});
+----
+
+== Best Practices
+
+* Always use `SafeRespond` methods instead of direct `Sender.Tell()` to avoid null reference exceptions
+* Capture `IServiceProvider` through `InheritActor` base class to resolve scoped services
+* Use `Run` helpers for async operations to ensure proper context configuration
+* Name your actor systems descriptively when calling `AddAkkaSystem`
