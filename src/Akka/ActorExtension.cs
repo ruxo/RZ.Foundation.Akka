@@ -10,11 +10,6 @@ using CS = Akka.Actor.CoordinatedShutdown;
 
 namespace RZ.Foundation.Akka;
 
-public interface ICanResponse;
-
-// ReSharper disable once UnusedTypeParameter
-public interface ICanResponse<T> : ICanResponse;
-
 [PublicAPI]
 public static class ActorExtension
 {
@@ -96,27 +91,6 @@ public static class ActorExtension
         [PublicAPI]
         public void TellUnit(IActorRef? sender = null)
             => target.Tell(unit, sender ?? ActorRefs.NoSender);
-
-
-        /// <summary>
-        /// Sends a request message to the target actor and awaits a response of type <see cref="Outcome{R}"/>.
-        /// </summary>
-        /// <typeparam name="T">The type of the request message, which must implement <see cref="ICanResponse{R}"/>.</typeparam>
-        /// <typeparam name="R">The type of the response expected from the target actor.</typeparam>
-        /// <param name="message">The request message to be sent to the target actor.</param>
-        /// <param name="timeout">
-        /// Optional timeout duration for the request. If not specified, the default ask timeout defined in <see cref="AkkaInstaller.DefaultAskTimeout"/> is used.
-        /// </param>
-        /// <returns>An outcome containing the result of type <typeparamref name="R"/> or an error.</returns>
-        [PublicAPI]
-        public async ValueTask<Outcome<R>> Request<T, R>(T message, TimeSpan? timeout = null) where T : ICanResponse<R> {
-            try{
-                return await target.Ask<Outcome<R>>(message, timeout ?? AkkaInstaller.DefaultAskTimeout.Seconds()).ConfigureAwait(false);
-            }
-            catch (Exception e){
-                return ErrorFrom.Exception(e);
-            }
-        }
 
         [PublicAPI]
         public async ValueTask<Outcome<object>> TryAsk(object message, TimeSpan? timeout = null) {
