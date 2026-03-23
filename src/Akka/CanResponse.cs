@@ -1,4 +1,5 @@
-﻿using Akka.Actor;
+﻿using System.Runtime.CompilerServices;
+using Akka.Actor;
 using JetBrains.Annotations;
 using LanguageExt.UnitsOfMeasure;
 using RZ.Foundation.Types;
@@ -6,7 +7,14 @@ using RZ.Foundation.Types;
 namespace RZ.Foundation.Akka;
 
 [PublicAPI]
-public abstract record CanResponse<T>
+public interface ICanRaiseError
+{
+    object RaiseError(IActorRef target, ErrorInfo error);
+    object RaiseError(ErrorInfo error);
+}
+
+[PublicAPI]
+public abstract record CanResponse<T> : ICanRaiseError
 {
     public async ValueTask<Outcome<T>> RequestTo(ICanTell target, TimeSpan? timeout = null) {
         try{
@@ -23,9 +31,14 @@ public abstract record CanResponse<T>
         return message;
     }
 
-    public Outcome<T> RaiseError(IActorRef target, ErrorInfo error) {
-        var message = FailedOutcome<T>(error);
+    public object RaiseError(IActorRef target, ErrorInfo error) {
+        var message = CreateError(error);
         target.Tell(message);
         return message;
     }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Outcome<T> CreateError(ErrorInfo error) => FailedOutcome<T>(error);
+
+    public object RaiseError(ErrorInfo error) => CreateError(error);
 }
