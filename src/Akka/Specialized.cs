@@ -43,19 +43,29 @@ public abstract record CanResponse<T> : ICanRaiseError
 }
 
 [PublicAPI]
-public interface ICanSwapActivity<T> where T : ICanSwapActivity<T>
+public interface ICanSwapActivity
 {
-    T SwapActivity(ActivityId? activityId);
+    object SwapActivity(ActivityId? activityId);
+}
+
+[PublicAPI]
+public interface ICanSwapActivity<out T> : ICanSwapActivity where T : ICanSwapActivity<T>
+{
+    T SwapActivityT(ActivityId? activityId);
 }
 
 [PublicAPI]
 public abstract record TraceableCommand<T>(ActivityId? ActivityId) : ICanSwapActivity<T> where T: TraceableCommand<T>
 {
-    public T SwapActivity(ActivityId? activityId) => (T) this with { ActivityId = activityId };
+    public T SwapActivityT(ActivityId? activityId) => (T) this with { ActivityId = activityId };
+
+    public object SwapActivity(ActivityId? activityId) => SwapActivityT(activityId);
 }
 
 [PublicAPI]
 public abstract record TraceableResponder<T>(ActivityId? ActivityId) : CanResponse<T>, ICanSwapActivity<T> where T : TraceableResponder<T>
 {
-    public T SwapActivity(ActivityId? activityId) => (T) this with { ActivityId = activityId };
+    public T SwapActivityT(ActivityId? activityId) => (T) this with { ActivityId = activityId };
+
+    public object SwapActivity(ActivityId? activityId) => SwapActivityT(activityId);
 }
