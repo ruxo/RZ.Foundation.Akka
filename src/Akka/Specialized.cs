@@ -63,9 +63,9 @@ public abstract record TraceableCommand<T>(ActivityId? ActivityId) : ICanSwapAct
 }
 
 [PublicAPI]
-public abstract record TraceableResponder<T>(ActivityId? ActivityId) : CanResponse<T>, ICanSwapActivity<T> where T : TraceableResponder<T>
+public abstract record TraceableResponder<TSelf,TRes>(ActivityId? ActivityId) : CanResponse<TRes>, ICanSwapActivity<TSelf> where TSelf : TraceableResponder<TSelf,TRes>
 {
-    public T SwapActivityT(ActivityId? activityId) => (T) this with { ActivityId = activityId };
+    public TSelf SwapActivityT(ActivityId? activityId) => (TSelf) this with { ActivityId = activityId };
 
     public object SwapActivity(ActivityId? activityId) => SwapActivityT(activityId);
 }
