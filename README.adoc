@@ -1,4 +1,5 @@
 = RZ Akka library
+:toc:
 
 == Overview
 
@@ -6,14 +7,38 @@ RZ.Foundation.Akka is a library that simplifies integration of Akka.NET actor sy
 
 == Installation
 
-To install Akka in ASP.Net project, use:
+To install Akka in an ASP.NET project, use:
 
+.Simple
 [source,csharp]
 ----
 builder.Services.AddAkkaSystem("SYSTEM NAME");
 ----
 
 This registers the Akka actor system with the specified name into the DI container.
+
+During Akka system startup, you can start actors by providing `ActorRegistration`.
+
+.Start with actors
+[source,csharp]
+----
+builder.Services.AddAkkaSystem(
+    "SYSTEM NAME",
+    new("test", sp => Props.Create(() => new MyActor(sp))),
+    new("mySpecial", ActorFactory: (sp, system) => system.ActorOf<MySpecial>("my-special"))
+    );
+----
+
+Note that `sp` (`IServiceProvider`) should not be used to resolve services during this initialization, as it may cause cyclic dependencies.
+
+The framework also provides `IAkkaServices` (in the `RZ.Foundation.Akka` namespace) to retrieve an actor instance:
+
+.Retrieve an actor instance
+[source,csharp]
+----
+var akkaServices = sp.GetRequiredService<IAkkaServices>();
+var myTest = akkaServices.GetService("test");
+----
 
 == Base Actor Classes
 
@@ -37,7 +62,7 @@ public class MyActor : RzUntypedActor<MyActor>
 
 ==== FloodAndStop
 
-Use this to gracefully shutdown your actor while ensuring all queued messages are processed before stopping.
+Use this to gracefully shut down your actor while ensuring all queued messages are processed before stopping.
 
 [source,csharp]
 ----
@@ -88,49 +113,54 @@ protected override void OnFinalization(object message)
 }
 ----
 
-The library provides safe response methods for actor communication:
+== Solid Message Passing
 
-=== SafeRespond
+The library provides a safe way to ask and retrieve data from an actor. A message may implement
+`CanResponse<T>`, where `T` is the type of response expected from the message.
 
-Safely responds to sender without throwing exceptions:
+Note that this framework relies on the `Outcome<T>` type from the `RZ.Foundation` library, which provides Go-like error handling.
 
-[source,csharp]
-----
-SafeRespond(message);
-----
-
-=== RespondSuccess
-
-Responds with a success result:
+For example, if you have a message `GetCurrentPrice` and expect a `decimal` return, the message would look like this:
 
 [source,csharp]
 ----
-RespondSuccess(data);
+public sealed record GetCurrentPrice : CanResponse<decimal>;
+
+IActorRef myAccount; // and you have an account actor
 ----
 
-=== RespondError
+=== Query
 
-Responds with an error result:
+To ask for the price, it looks like this:
 
 [source,csharp]
 ----
-RespondError(errorMessage);
+if (Fail(await new GetCurrentPrice().RequestTo(myAccount), out var error, out var amount)) {
+    Console.WriteLine("Unexpected error: {0}", error);
+}
+else {
+    Console.WriteLine("My amount is {0}", amount);  // amount is `decimal` type
+}
 ----
 
-== Run Helpers
-
-Utility methods for executing asynchronous operations within actors with proper await configuration.
+=== Actor message handling
 
 [source,csharp]
 ----
-await Run(async () => {
-    // Async operation with configured awaits
-});
+public sealed class MyAccountManager : UntypedActor
+{
+    decimal? amount;
+
+    public override void Receive(object message)
+    {
+        if (message is GetCurrentPrice m)
+            if (amount is null)
+                m.RaiseError(Sender, new ErrorInfo("not-set", "Amount is not yet set"));
+            else
+                m.Respond(Sender, amount);  // strong-typed check!
+        else
+            UnhandleMessage(message);
+    }
+}
 ----
 
-== Best Practices
-
-* Always use `SafeRespond` methods instead of direct `Sender.Tell()` to avoid null reference exceptions
-* Capture `IServiceProvider` through `InheritActor` base class to resolve scoped services
-* Use `Run` helpers for async operations to ensure proper context configuration
-* Name your actor systems descriptively when calling `AddAkkaSystem`
