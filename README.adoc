@@ -40,6 +40,41 @@ var akkaServices = sp.GetRequiredService<IAkkaServices>();
 var myTest = akkaServices.GetService("test");
 ----
 
+== Advanced Configuration
+
+For more control over the Akka system, use the `AkkaConfig` class:
+
+.Simple configuration
+[source,csharp]
+----
+var config = new AkkaConfig {
+    System = "my-system",
+    AskTimeout = 15  // seconds, default is 10
+};
+builder.Services.AddAkkaSystem(config);
+----
+
+.Cluster configuration
+[source,csharp]
+----
+var config = new AkkaConfig {
+    System = "my-cluster",
+    AskTimeout = 10,
+    Self = "localhost:8081",
+    Nodes = ["localhost:8081", "localhost:8082"]
+};
+builder.Services.AddAkkaSystem(config,
+    new("worker", sp => Props.Create(() => new WorkerActor(sp)))
+);
+----
+
+`AkkaConfig` properties:
+
+* `System` -- Actor system name. If not set, defaults to the executing assembly name.
+* `AskTimeout` -- Maximum wait time in seconds for the Ask pattern (default: 10).
+* `Self` -- This node's `"host:port"` endpoint for remote communication.
+* `Nodes` -- Cluster seed node addresses. Setting this enables Akka clustering.
+
 == Base Actor Classes
 
 The library provides base actor classes that integrate with ASP.NET's dependency injection:
@@ -164,3 +199,47 @@ public sealed class MyAccountManager : UntypedActor
 }
 ----
 
+=== ICanRaiseError
+
+`CanResponse<T>` implements the `ICanRaiseError` interface, which provides a standard way to signal errors. You can also use this interface independently for messages that only need error signaling without a response type.
+
+[source,csharp]
+----
+public sealed record CancelOrder(string OrderId) : ICanRaiseError
+{
+    public object RaiseError(ErrorInfo error) => FailedOutcome<Unit>(error);
+}
+----
+
+The `RaiseError` extension method sends the error directly to a target actor:
+
+[source,csharp]
+----
+message.RaiseError(Sender, new ErrorInfo("invalid", "Order not found"));
+----
+
+== Traceable Messages
+
+For distributed tracing scenarios, the library provides message types that carry an `ActivityId` for correlation across actor boundaries.
+
+=== TraceableCommand
+
+Use `TraceableCommand<T>` for fire-and-forget messages that need tracing but do not return a response.
+
+[source,csharp]
+----
+public sealed record ProcessOrder(string OrderId, ActivityId? ActivityId)
+    : TraceableCommand<ProcessOrder>(ActivityId);
+----
+
+=== TraceableResponder
+
+Use `TraceableResponder<TSelf, TRes>` for request-response messages that need tracing. This combines `CanResponse<TRes>` with activity tracking.
+
+[source,csharp]
+----
+public sealed record GetOrderStatus(string OrderId, ActivityId? ActivityId)
+    : TraceableResponder<GetOrderStatus, string>(ActivityId);
+----
+
+Both types implement `ICanSwapActivity<T>`, which allows replacing the `ActivityId` via `SwapActivityT(activityId)` when forwarding messages between actors.
