@@ -1,5 +1,4 @@
-﻿using System.Configuration;
-using Akka.Actor;
+﻿using Akka.Actor;
 using Akka.Actor.Setup;
 using Akka.Configuration;
 using JetBrains.Annotations;

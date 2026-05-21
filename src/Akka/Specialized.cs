@@ -35,8 +35,13 @@ public abstract record CanResponse<T> : ICanRaiseError
 
     public Outcome<T> Respond(IActorRef target, T data) {
         var message = SuccessOutcome(data);
-        target.Tell(message);
+        target.Tell(message, ActorRefs.NoSender);
         return message;
+    }
+
+    public Outcome<T> Respond(IActorRef target, Outcome<T> data) {
+        target.Tell(data, ActorRefs.NoSender);
+        return data;
     }
 
     public object RaiseError(ErrorInfo error) => FailedOutcome<T>(error);
