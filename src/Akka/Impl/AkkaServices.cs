@@ -3,9 +3,9 @@ using Akka.Actor;
 
 namespace RZ.Foundation.Akka.Impl;
 
-sealed class AkkaServices : IAKkaServices
+sealed class AkkaServices : IAkkaServices
 {
-    public FrozenDictionary<string, IActorRef> Actors = FrozenDictionary<string, IActorRef>.Empty;
+    public volatile FrozenDictionary<string, IActorRef> Actors = FrozenDictionary<string, IActorRef>.Empty;
 
     public IActorRef? GetService(string name)
         => Actors.GetValueOrDefault(name);

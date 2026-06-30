@@ -6,11 +6,26 @@ using Microsoft.Extensions.Logging;
 
 namespace RZ.Foundation.Akka;
 
+/// <summary>
+/// Abstract <see cref="UntypedActor"/> base class that provides dependency-injection access and common
+/// actor helpers (logging, async <c>ValueTask</c> bridging, and graceful drain-and-stop shutdown).
+/// </summary>
+/// <typeparam name="T">
+/// The concrete actor type deriving from this base (curiously recurring template pattern). It is used to
+/// resolve a typed <see cref="ILogger{T}"/> so log entries are categorized under the actual actor type.
+/// </typeparam>
+/// <param name="sp">The service provider used to resolve the logger and exposed via <see cref="Services"/>.</param>
 [PublicAPI]
 public abstract class RzUntypedActor<T>(IServiceProvider sp) : UntypedActor where T : RzUntypedActor<T>
 {
+    /// <summary>
+    /// Logger resolved as <see cref="ILogger{T}"/>, so entries are categorized under the concrete actor type <typeparamref name="T"/>.
+    /// </summary>
     protected readonly ILogger Logger = sp.GetRequiredService<ILogger<T>>();
 
+    /// <summary>
+    /// The dependency-injection service provider available to the actor for resolving services.
+    /// </summary>
     protected IServiceProvider Services => sp;
 
     /// <summary>

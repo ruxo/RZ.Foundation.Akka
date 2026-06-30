@@ -17,7 +17,9 @@ builder.Services.AddAkkaSystem("SYSTEM NAME");
 
 This registers the Akka actor system with the specified name into the DI container.
 
-During Akka system startup, you can start actors by providing `ActorRegistration`.
+During Akka system startup, you can start actors by providing one or more `ActorRegistration` entries.
+The actor system and its registered actors are created eagerly when the host starts, and the system is
+shut down gracefully (Akka `CoordinatedShutdown`) when the host stops.
 
 .Start with actors
 [source,csharp]
@@ -25,19 +27,28 @@ During Akka system startup, you can start actors by providing `ActorRegistration
 builder.Services.AddAkkaSystem(
     "SYSTEM NAME",
     new("test", sp => Props.Create(() => new MyActor(sp))),
-    new("mySpecial", ActorFactory: (sp, system) => system.ActorOf<MySpecial>("my-special"))
+    new("my-special", ActorFactory: (sp, system) => system.ActorOf<MySpecial>("my-special"))
     );
 ----
 
-Note that `sp` (`IServiceProvider`) should not be used to resolve services during this initialization, as it may cause cyclic dependencies.
+Each registration has a `Name` and one of two factories:
 
-The framework also provides `IAkkaServices` (in the `RZ.Foundation.Akka` namespace) to retrieve an actor instance:
+* `PropsFactory` -- builds the actor's `Props`; the actor is spawned as `system.ActorOf(props, Name)`, so `Name` is also the actor's path name.
+* `ActorFactory` -- creates the actor (and chooses its path name) directly. Here `Name` is only the lookup key, so it need not match the actor's path name -- keep them identical to avoid confusion.
+
+If both factories are supplied, `ActorFactory` takes precedence and `PropsFactory` is ignored. A registration with neither factory is skipped, and a warning is logged.
+
+Note that `sp` (`IServiceProvider`) should not be used to resolve services during this initialization, as it may cause cyclic dependencies. Passing `sp` into an actor's constructor for later use (as above) is fine.
+
+Only one Akka system can be registered per application; calling `AddAkkaSystem` a second time throws.
+
+The framework also exposes registered actors as named services through `IAkkaServices` (in the `RZ.Foundation.Akka` namespace). Resolve it from DI and look an actor up by its registration `Name`:
 
 .Retrieve an actor instance
 [source,csharp]
 ----
 var akkaServices = sp.GetRequiredService<IAkkaServices>();
-var myTest = akkaServices.GetService("test");
+var myTest = akkaServices.GetService("test");   // the actor registered as "test", or null if none
 ----
 
 == Advanced Configuration
